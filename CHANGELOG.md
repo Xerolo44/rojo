@@ -33,6 +33,7 @@ Making a new release? Simply add the new header with the version and date undern
 
 * LocalizationTables no longer report as changed when nothing changes. ([#1333])
 * Sounds now preloaded correctly. The warning "*ContentId: rbxassetid://203785492 failed due to: Asset type does not match requested type*" is fixed. ([#1351])
+* (Fork) Added a remote control to the plugin: it polls a control endpoint on localhost (port 34870) so local tools can switch the connected server. Includes an MCP server in `tools/rojo-control-mcp`.
 
 [#1333]: https://github.com/rojo-rbx/rojo/pull/1333
 [#1351]: https://github.com/rojo-rbx/rojo/pull/1351

@@ -25,6 +25,7 @@ local preloadAssets = require(Plugin.preloadAssets)
 local soundPlayer = require(Plugin.soundPlayer)
 local ignorePlaceIds = require(Plugin.ignorePlaceIds)
 local timeUtil = require(Plugin.timeUtil)
+local RemoteControl = require(Plugin.RemoteControl)
 local Theme = require(script.Theme)
 
 local Page = require(script.Page)
@@ -154,6 +155,19 @@ function App:init()
 				self:checkSyncReminder()
 			end
 		end)
+
+		-- Only the edit DataModel is remote controlled; playtest DataModels load
+		-- their own copy of the plugin and must not answer to the same commands.
+		if Settings:get("remoteControlEnabled") then
+			self:startRemoteControl()
+		end
+		self.disconnectRemoteControlChanged = Settings:onChanged("remoteControlEnabled", function(enabled)
+			if enabled then
+				self:startRemoteControl()
+			else
+				self:stopRemoteControl()
+			end
+		end)
 	end
 
 	if self:isAutoConnectPlaytestServerAvailable() then
@@ -186,6 +200,11 @@ function App:willUnmount()
 	end
 
 	self:stopSyncReminderPolling()
+
+	if self.disconnectRemoteControlChanged then
+		self.disconnectRemoteControlChanged()
+	end
+	self:stopRemoteControl()
 
 	self.autoConnectPlaytestServerListener()
 	self:clearRunningConnectionInfo()
@@ -598,6 +617,83 @@ function App:useRunningConnectionInfo()
 
 	self.setHost(host)
 	self.setPort(port)
+end
+
+function App:startRemoteControl()
+	if self.remoteControl ~= nil then
+		return
+	end
+
+	self.remoteControl = RemoteControl.new({
+		port = tostring(Settings:get("remoteControlPort")),
+		handlers = {
+			getStatus = function()
+				local host, port = self:getHostAndPort()
+				return {
+					appStatus = self.state.appStatus,
+					projectName = self.state.projectName,
+					address = self.state.address,
+					errorMessage = if self.state.appStatus == AppStatus.Error then self.state.errorMessage else nil,
+					connectingText = if self.state.appStatus == AppStatus.Connecting
+						then self.state.connectingText
+						else nil,
+					host = host,
+					port = port,
+				}
+			end,
+			connect = function(host, port)
+				self:remoteConnect(host, port)
+			end,
+			disconnect = function()
+				self:remoteDisconnect()
+			end,
+			confirm = function(action)
+				if self.state.appStatus ~= AppStatus.Confirming then
+					return false
+				end
+				self.confirmationBindable:Fire(action)
+				return true
+			end,
+		},
+	})
+	self.remoteControl:start()
+end
+
+function App:stopRemoteControl()
+	if self.remoteControl == nil then
+		return
+	end
+	self.remoteControl:stop()
+	self.remoteControl = nil
+end
+
+function App:remoteDisconnect()
+	if self.state.appStatus == AppStatus.Confirming then
+		-- Aborting lets the pending session shut itself down; stopping it
+		-- directly would leave its confirmation callback waiting forever.
+		self.confirmationBindable:Fire("Abort")
+		local deadline = os.clock() + 5
+		while self.serveSession ~= nil and os.clock() < deadline do
+			task.wait(0.1)
+		end
+	end
+
+	self:endSession()
+
+	if self.state.appStatus == AppStatus.Error or self.state.appStatus == AppStatus.Settings then
+		self:setState({
+			appStatus = AppStatus.NotConnected,
+			toolbarIcon = Assets.Images.PluginButton,
+		})
+	end
+end
+
+function App:remoteConnect(host: string, port: string)
+	self:remoteDisconnect()
+
+	self.setHost(if host == Config.defaultHost then "" else host)
+	self.setPort(if port == Config.defaultPort then "" else port)
+	self:startSession()
 end
 
 function App:startSession()

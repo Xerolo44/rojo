@@ -220,6 +220,16 @@ function SettingsPage:render()
 				layoutOrder = layoutIncrement(),
 			}),
 
+			RemoteControlEnabled = e(Setting, {
+				id = "remoteControlEnabled",
+				name = "Remote Control",
+				description = "Let local tools switch the connected server via a control endpoint on 127.0.0.1:"
+					.. tostring(Settings:get("remoteControlPort")),
+				tag = "unstable",
+				transparency = self.props.transparency,
+				layoutOrder = layoutIncrement(),
+			}),
+
 			OpenScriptsExternally = e(Setting, {
 				id = "openScriptsExternally",
 				name = "Open Scripts Externally",

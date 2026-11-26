@@ -1,0 +1,71 @@
+return function()
+	local protocol = require(script.Parent.protocol)
+
+	describe("normalizePort", function()
+		it("should accept numbers and numeric strings", function()
+			expect(protocol.normalizePort(34872)).to.equal("34872")
+			expect(protocol.normalizePort("34899")).to.equal("34899")
+		end)
+
+		it("should reject out of range and non-numeric ports", function()
+			expect(protocol.normalizePort(0)).to.equal(nil)
+			expect(protocol.normalizePort("70000")).to.equal(nil)
+			expect(protocol.normalizePort("34872; rm")).to.equal(nil)
+			expect(protocol.normalizePort(nil)).to.equal(nil)
+		end)
+	end)
+
+	describe("normalizeHost", function()
+		it("should default to localhost", function()
+			expect(protocol.normalizeHost(nil)).to.equal("localhost")
+			expect(protocol.normalizeHost("")).to.equal("localhost")
+		end)
+
+		it("should accept loopback spellings", function()
+			expect(protocol.normalizeHost("127.0.0.1")).to.equal("127.0.0.1")
+			expect(protocol.normalizeHost("http://LOCALHOST")).to.equal("localhost")
+			expect(protocol.normalizeHost("::1")).to.equal("[::1]")
+		end)
+
+		it("should reject remote hosts", function()
+			local host, err = protocol.normalizeHost("example.com")
+			expect(host).to.equal(nil)
+			expect(type(err)).to.equal("string")
+			expect(protocol.normalizeHost("192.168.0.5")).to.equal(nil)
+			expect(protocol.normalizeHost("localhost.evil.com")).to.equal(nil)
+		end)
+	end)
+
+	describe("validateCommand", function()
+		it("should normalize connect commands", function()
+			local command = protocol.validateCommand({ id = "a", type = "connect", port = 34874 })
+			expect(command.type).to.equal("connect")
+			expect(command.host).to.equal("localhost")
+			expect(command.port).to.equal("34874")
+		end)
+
+		it("should require an id", function()
+			expect(protocol.validateCommand({ type = "disconnect" })).to.equal(nil)
+		end)
+
+		it("should reject unknown types and bad confirm actions", function()
+			expect(protocol.validateCommand({ id = "a", type = "eval" })).to.equal(nil)
+			expect(protocol.validateCommand({ id = "a", type = "confirm", action = "Yes" })).to.equal(nil)
+			expect(protocol.validateCommand({ id = "a", type = "confirm", action = "Accept" }).action).to.equal(
+				"Accept"
+			)
+		end)
+
+		it("should reject connect commands to remote hosts", function()
+			expect(protocol.validateCommand({ id = "a", type = "connect", host = "10.0.0.1", port = 1 })).to.equal(nil)
+		end)
+	end)
+
+	describe("nextPollDelay", function()
+		it("should poll quickly while reachable and back off otherwise", function()
+			expect(protocol.nextPollDelay(0)).to.equal(1)
+			expect(protocol.nextPollDelay(1)).to.equal(2)
+			expect(protocol.nextPollDelay(50)).to.equal(10)
+		end)
+	end)
+end

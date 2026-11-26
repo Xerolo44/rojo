@@ -27,6 +27,8 @@ local defaultSettings = {
 	logLevel = "Info",
 	timingLogsEnabled = false,
 	priorEndpoints = {},
+	remoteControlEnabled = true,
+	remoteControlPort = "34870",
 }
 
 local Settings = {}

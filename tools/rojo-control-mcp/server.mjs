@@ -107,7 +107,7 @@ async function sendCommand(studio, command) {
 const studioParam = {
   type: "string",
   description:
-    "Which Studio window to control: instanceId, placeId, or part of the place name (e.g. 'Monsters and Masterpieces'). Optional when only one Studio is polling.",
+    "Which Studio window to control: instanceId, placeId (most reliable), or part of the published place name or game.Name. Optional when only one Studio is polling.",
 };
 
 export const TOOLS = [

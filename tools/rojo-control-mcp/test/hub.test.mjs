@@ -118,6 +118,14 @@ test("resolveTarget prefers exact matches", () => {
   assert.equal(resolveTarget(live, "gam").status, 409);
   assert.equal(resolveTarget(live, "nope").status, 404);
   assert.equal(resolveTarget([], undefined).status, 404);
+
+  const studio = [
+    { instanceId: "a", placeName: "Monsters and Masterpieces", dataModelName: "Place1", placeId: 133163803510735 },
+    { instanceId: "b", placeName: "Place1", dataModelName: "Place1", placeId: 0 },
+  ];
+  assert.equal(resolveTarget(studio, "Monsters and Masterpieces").instance.instanceId, "a");
+  assert.equal(resolveTarget(studio, "133163803510735").instance.instanceId, "a");
+  assert.equal(resolveTarget(studio, "Place1").status, 409);
 });
 
 test("browser-style requests are refused", async () => {

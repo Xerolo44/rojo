@@ -43,6 +43,7 @@ export function createHub({ port = DEFAULT_CONTROL_PORT, now = () => Date.now() 
     return {
       instanceId: r.instanceId,
       placeName: r.placeName,
+      dataModelName: r.dataModelName,
       placeId: r.placeId,
       gameId: r.gameId,
       pluginVersion: r.pluginVersion,
@@ -199,11 +200,14 @@ export function resolveTarget(live, selector) {
   const byPlace = live.filter((s) => String(s.placeId) === wanted && wanted !== "0");
   if (byPlace.length === 1) return { instance: byPlace[0] };
 
+  // Match the published place name and the DataModel name (game.Name), since
+  // the published name is only known once the plugin has looked it up.
   const needle = wanted.toLowerCase();
-  const exactName = live.filter((s) => String(s.placeName ?? "").toLowerCase() === needle);
+  const names = (s) => [s.placeName, s.dataModelName].filter(Boolean).map((n) => String(n).toLowerCase());
+  const exactName = live.filter((s) => names(s).includes(needle));
   if (exactName.length === 1) return { instance: exactName[0] };
 
-  const byName = live.filter((s) => String(s.placeName ?? "").toLowerCase().includes(needle));
+  const byName = live.filter((s) => names(s).some((n) => n.includes(needle)));
   if (byName.length === 1) return { instance: byName[0] };
   if (byName.length > 1 || byPlace.length > 1 || exactName.length > 1) {
     return { status: 409, error: `'${wanted}' matches several Studio windows; use the instanceId` };

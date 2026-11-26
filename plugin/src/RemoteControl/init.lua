@@ -10,6 +10,7 @@
 ]]
 
 local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Rojo = script:FindFirstAncestor("Rojo")
 local Plugin = Rojo.Plugin
@@ -44,20 +45,60 @@ function RemoteControl.new(options: { port: string, handlers: Handlers })
 		pendingResults = {},
 		running = false,
 		failures = 0,
+		-- placeId -> published place name, so GetProductInfo runs once per place.
+		placeNames = {},
+		fetchingPlaceName = {},
 	}, RemoteControl)
 
 	return self
 end
 
+--[[
+	In Studio, game.Name is the DataModel name ("Place1" for many published
+	places), not what the developer calls the place. The published name is what
+	people recognise, so it is looked up once per place id. game.PlaceId can
+	change while running because Rojo applies servePlaceIds, hence the cache.
+]]
+function RemoteControl:getPlaceName(placeId: number): string?
+	if placeId == 0 then
+		return nil
+	end
+
+	local cached = self.placeNames[placeId]
+	if cached ~= nil then
+		return cached
+	end
+
+	if not self.fetchingPlaceName[placeId] then
+		self.fetchingPlaceName[placeId] = true
+		task.spawn(function()
+			local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, placeId)
+			if ok and type(info) == "table" and type(info.Name) == "string" then
+				self.placeNames[placeId] = info.Name
+			else
+				Log.trace("Remote control could not look up the name of place {}: {}", placeId, info)
+				-- Allow a later retry instead of giving up for the whole session.
+				task.delay(30, function()
+					self.fetchingPlaceName[placeId] = nil
+				end)
+			end
+		end)
+	end
+
+	return nil
+end
+
 function RemoteControl:buildReport()
 	local status = self.handlers.getStatus()
+	local placeId = game.PlaceId
 
 	return {
 		protocolVersion = protocol.version,
 		instanceId = self.instanceId,
 		pluginVersion = Version.display(Config.version),
-		placeName = game.Name,
-		placeId = game.PlaceId,
+		placeName = self:getPlaceName(placeId) or game.Name,
+		dataModelName = game.Name,
+		placeId = placeId,
 		gameId = game.GameId,
 		status = status,
 		results = self.pendingResults,

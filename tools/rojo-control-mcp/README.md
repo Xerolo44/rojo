@@ -31,7 +31,7 @@ Claude Code ──stdio/MCP──► server.mjs ──HTTP──► Steuer-Endpu
 | `rojo_disconnect(studio?)` | Verbindung trennen |
 | `rojo_confirm(action, studio?)` | Erstsync-Bestätigung beantworten: `Accept`, `Abort` oder `Reject` |
 
-`studio` ist die `instanceId`, die Place-ID oder ein Teil des Place-Namens (z. B. `"Monsters and Masterpieces"`).
+`studio` ist die `instanceId`, die Place-ID (z. B. `"133163803510735"`) oder ein Teil des Place-Namens. Als Name gilt der veröffentlichte Name aus `MarketplaceService:GetProductInfo` (wird beim Start einmal nachgeschlagen) und zusätzlich `game.Name` (in Studio oft nur „Place1“). Am sichersten ist die Place-ID.
 Ohne `studio` geht ein Befehl nur durch, wenn genau ein Studio verbunden ist.
 
 ## Einrichtung

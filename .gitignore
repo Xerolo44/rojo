@@ -29,3 +29,6 @@
 
 # Locally built plugin files
 /dist/
+
+# Backup of the previously installed plugin (kept locally only)
+/backup/
